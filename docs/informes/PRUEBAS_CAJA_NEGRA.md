@@ -387,14 +387,45 @@ tests/test_cu23_demand_forecasting.py::test_cu23_latest_model_metadata PASSED   
 
 ---
 
+### CU24: Segmentar Clientes con K-Means (ML No Supervisado - RFM + Retorno)
+
+**Objetivo de Calidad:** Validar que los Administradores de Tienda puedan ejecutar algoritmos de Machine Learning no supervisados (`KMeans` con inicialización `k-means++` y `StandardScaler`) sobre vectores conductuales RFM+D (Recencia, Frecuencia, Monto Monetario y Tasa de Retorno/Cambio) de la cartera de clientes, clasificando automáticamente la clientela en perfiles accionables (*Clientes VIP / Embajadores*, *Compradores de Temporada*, *Cazadores de Ofertas*, *Perfil de Alto Retorno*), persistiendo centroides y asignaciones en PostgreSQL (`customer_segments` y `ml_models`), garantizando el bloqueo estricto ante planes básicos y proveyendo coordenadas 2D para renderizado de dispersión.
+
+**Ficha Técnica de Cobertura:**
+- **Entidades Auditadas:** `customer_segments`, `ml_models`, `companies`, `plans`, `subscriptions`, `users`, `sales`, `garment_returns`, `garment_exchanges`, `synthetic_datasets`.
+- **Motor de Machine Learning:** Scikit-Learn `KMeans`, `StandardScaler`, `silhouette_score`, con serialización `.joblib` en directorio de modelos.
+- **Gobernanza de Planes SaaS:** Verificación estricta mediante `validate_ai_access` (HTTP 403 ante Plan Básico).
+- **Aislamiento Multitenant:** Filtro y asignación estricta por `tenant_id` garantizando que los vectores de compra nunca se mezclen entre empresas.
+
+| ID | Objetivo / Escenario | Precondiciones | Datos de Entrada (Input) | Pasos de Ejecución | Resultado Esperado | Resultado Obtenido | Estado |
+| :---: | :--- | :--- | :--- | :--- | :--- | :--- | :---: |
+| **CP-CU24-01** | **Bloqueo estricto por cuota de plan SaaS (Plan Básico sin módulo IA)** | Tenant con Plan Básico activo (`has_ai_access: False`). | Petición `POST /api/ml/customer-segmentation/train` con credenciales de tenant básico. | 1. Usuario intenta calibrar clustering.<br>2. Servicio ejecuta `validate_ai_access`.<br>3. Captura `FeatureNotAllowedException`. | Código `HTTP 403 Forbidden`. Mensaje explicativo: *"El modulo de Inteligencia Artificial (Gemini y Machine Learning) requiere una suscripcion activa a Plan Profesional o Empresarial."* | Rechazo inmediato de la operación; límite comercial protegido. | **APROBADO** |
+| **CP-CU24-02** | **Entrenamiento y clustering no supervisado K-Means exitoso (Happy Path)** | Tenant con Plan Profesional (`elegance`), clientes con compras reales o fallback sintético. | Petición `POST /api/ml/customer-segmentation/train` con `k_clusters: 4`, `use_synthetic_fallback: True`, `random_state: 42`. | 1. Administrador solicita segmentación.<br>2. Extrae matriz RFM+D.<br>3. Normaliza con `StandardScaler`.<br>4. Ajusta `KMeans` y calcula Silhouette Score.<br>5. Asigna 4 perfiles con centroides y guarda en `ml_models` y `customer_segments`. | Código `HTTP 200 OK`. Retorna $k=4$, Silhouette Score evaluado, inercia $> 0$, 4 perfiles con nombres, descripciones, badges y acciones recomendadas. | Segmentación completada con $k=4$ perfiles, centroides persistidos y modelo serializado en disco. | **APROBADO** |
+| **CP-CU24-03** | **Consulta de estado y telemetría del modelo de clustering vigente** | Tenant con modelo K-Means entrenado previamente. | Petición `GET /api/ml/customer-segmentation/status`. | 1. Usuario solicita estado del modelo activo.<br>2. Servicio consulta tabla `ml_models` (`model_type='KMEANS_CLUSTERING'`). | Código `HTTP 200 OK`. Retorna `has_trained_model: True`, `model_id`, versión, fecha de entrenamiento y métricas completas. | Telemetría del modelo obtenida con éxito para el panel directivo. | **APROBADO** |
+| **CP-CU24-04** | **Extracción de coordenadas para gráfico de dispersión 2D interactivo** | Clientes segmentados persistidos en base de datos. | Petición `GET /api/ml/customer-segmentation/scatter-points?limit=150`. | 1. Frontend solicita puntos para gráfico scatter.<br>2. Servicio recupera `customer_segments` y proyecta Frecuencia vs Monto con color por clúster. | Código `HTTP 200 OK`. Retorna array `points` con `customer_id`, `recency_days`, `frequency_count`, `monetary_total`, `return_rate`, `cluster_id` y código hex `color`. | Coordenadas entregadas de forma eficiente listas para renderizado gráfico. | **APROBADO** |
+| **CP-CU24-05** | **Exploración paginada drill-down de clientes clasificados por segmento** | Clientes asociados a segmentos en PostgreSQL. | Petición `GET /api/ml/customer-segmentation/customers?page=1&page_size=10`. | 1. Administrador abre tabla de clientes por clúster.<br>2. Servicio ejecuta consulta paginada con join a `users`. | Código `HTTP 200 OK`. Retorna `total`, `page`, `page_size` y lista detallada con email de cliente, label del segmento y métricas RFM+D. | Listado detallado obtenido permitiendo exportar o aplicar campañas dirigidas. | **APROBADO** |
+
+**Evidencia de Ejecución Pytest (`backend/tests/test_cu24_customer_segmentation.py`):**
+```text
+tests/test_cu24_customer_segmentation.py::test_cu24_plan_basic_forbidden_403 PASSED [ 20%]
+tests/test_cu24_customer_segmentation.py::test_cu24_train_kmeans_success PASSED       [ 40%]
+tests/test_cu24_customer_segmentation.py::test_cu24_get_segmentation_status PASSED    [ 60%]
+tests/test_cu24_customer_segmentation.py::test_cu24_get_scatter_points PASSED         [ 80%]
+tests/test_cu24_customer_segmentation.py::test_cu24_get_segmented_customers_drilldown PASSED [100%]
+
+======================= 5 passed, 7 warnings in 56.87s ========================
+```
+
+---
+
 ## 4. 📊 Resumen Estadístico Consolidado de Cobertura
 
 ```
 ========================================================================================
 RESUMEN EJECUTIVO DE PRUEBAS DE CAJA NEGRA — SISTEMAS 2 (1RA, 2DA Y 3RA PRESENTACIÓN)
 ========================================================================================
-Total Casos de Prueba Formalizados:    103
-Casos de Prueba Aprobados (PASSED):    103 (100%)
+Total Casos de Prueba Formalizados:    108
+Casos de Prueba Aprobados (PASSED):    108 (100%)
 Casos de Prueba Fallidos (FAILED):       0 (0%)
 Casos de Prueba Bloqueados:              0 (0%)
 ----------------------------------------------------------------------------------------
@@ -425,15 +456,18 @@ Distribución por Caso de Uso:
   - CU21 (Exportar Reportes a PDF y Excel):             9 Casos de Prueba  [100% OK]
   - CU22 (Generar Dataset Sintético de Ventas y ML):    5 Casos de Prueba  [100% OK]
   - CU23 (Predecir Demanda de Ropa por Talla - RF):     5 Casos de Prueba  [100% OK]
+  - CU24 (Segmentar Clientes con K-Means RFM+D):        5 Casos de Prueba  [100% OK]
 ----------------------------------------------------------------------------------------
 Aislamiento Multitenant:                               Verificado al 100% (HTTP 404/403)
 Políticas de Negocio Inviolables (P1, P2, P3, P4, P5): Cumplimiento Estricto Verificado
 Inteligencia Artificial Generativa (Gemini 2.5 Flash): Verificado con RAG y Fallback Local
 Generación Estocástica de Datos y ML Pipeline (NumPy): Verificado al 100% (Estacionalidad/Gauss)
 Machine Learning Supervisado (RandomForestRegressor):  Verificado al 100% (R2 >= 0.80, MAE/RMSE)
+Machine Learning No Supervisado (K-Means Clustering):  Verificado al 100% (Silhouette, Inercia, RFM+D)
 Exportación Multi-Formato (ReportLab + OpenPyXL):       Verificado al 100% (PDF/XLSX/CSV)
 Geolocalización Móvil (OpenStreetMap + OSRM/ORS):      Verificado al 100% (Vehicular y Peatonal)
 ========================================================================================
+```
 ```
 
 ---

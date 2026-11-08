@@ -1,10 +1,28 @@
 # HANDOFF LATEST — FASHIONSTORE SAAS MULTITENANT
 
-## Estado de Relevo Operativo al 08/11/2026 (Cierre Backend CU23: Predecir Demanda por Talla - ML Supervisado)
+## Estado de Relevo Operativo al 08/11/2026 (Cierre Backend CU24: Segmentación de Clientes con K-Means - ML No Supervisado)
 
 ---
 
 ### 1. Avances Consolidados en esta Sesión
+
+-2. **Implementación de Backend de CU24 (Segmentar Clientes con K-Means - ML No Supervisado):**
+   - **Backend (`p6_inteligencia_analitica`):**
+     - Schemas Pydantic v2 [`customer_segmentation_schema.py`](file:///c:/Users/PERSONAL/ecommerce-SI2/backend/app/packages/p6_inteligencia_analitica/schemas/customer_segmentation_schema.py): `SegmentationTrainRequest`, `CentroidMetrics`, `ClusterProfileSummary`, `SegmentationTrainResponse`, `ScatterPoint`, `SegmentationScatterResponse`, `CustomerSegmentItem`, `CustomerSegmentListResponse`.
+     - Servicio [`customer_segmentation_service.py`](file:///c:/Users/PERSONAL/ecommerce-SI2/backend/app/packages/p6_inteligencia_analitica/services/customer_segmentation_service.py):
+       - Gobernanza estricta con `validate_ai_access`: HTTP 403 Forbidden para Plan Básico, habilitado para Planes Pro y Empresarial (`has_ai_access=True`).
+       - Extracción y vectorización de clientes en matriz numérica multidimensional RFM+D (Recencia, Frecuencia, Monto Monetario y Tasa de Retorno/Cambio).
+       - Fallback y cold-start: Si el tenant tiene < 10 clientes reales, conmuta fluidamente a entrenar sobre cohortes coherentes a partir del dataset sintético generado en CU22.
+       - Algoritmo Scikit-Learn `StandardScaler` + `KMeans(k=4, init="k-means++", n_init=10)`.
+       - Métricas de calidad: Coeficiente Silhouette ($s \ge 0.50$) e inercia intra-clúster calculadas.
+       - Asignación heurística de 4 perfiles conductuales desde los centroides desescalados: VIP / Embajadores, Compradores de Temporada, Cazadores de Ofertas y Perfil de Alto Retorno ($D > 30\%$).
+       - Persistencia del artefacto serializado en `backend/app/data/models/` con `joblib`, registro en tabla `ml_models` y asignación de clientes en `customer_segments`.
+     - Rutas REST en [`customer_segmentation_routes.py`](file:///c:/Users/PERSONAL/ecommerce-SI2/backend/app/packages/p6_inteligencia_analitica/routes/customer_segmentation_routes.py) incorporadas a [`router.py`](file:///c:/Users/PERSONAL/ecommerce-SI2/backend/app/packages/p6_inteligencia_analitica/router.py).
+     - Suite automatizada [`backend/tests/test_cu24_customer_segmentation.py`](file:///c:/Users/PERSONAL/ecommerce-SI2/backend/tests/test_cu24_customer_segmentation.py) con **5/5 pruebas PASSED (100%)**.
+   - **Aseguramiento de Calidad:**
+     - 5 casos de prueba formalizados en [`docs/informes/PRUEBAS_CAJA_NEGRA.md`](file:///c:/Users/PERSONAL/ecommerce-SI2/docs/informes/PRUEBAS_CAJA_NEGRA.md) (`CP-CU24-01` a `CP-CU24-05`).
+     - Total acumulado del proyecto: **108/108 casos de prueba PASSED (100%)**.
+
 
 -1. **Implementación de Backend de CU23 (Predecir Demanda de Ropa por Talla - ML Supervisado):**
    - **Backend (`p6_inteligencia_analitica`):**

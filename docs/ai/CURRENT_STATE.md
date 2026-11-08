@@ -10,8 +10,8 @@
 | Estado | Cantidad de CUs | Casos de Uso Comprendidos |
 | :--- | :---: | :--- |
 | **Implementados y Verificados (100%)** | **22 CUs** | `CU01`, `CU02`, `CU03`, `CU04`, `CU05`, `CU06`, `CU07`, `CU08`, `CU09`, `CU10`, `CU11`, `CU12`, `CU13`, `CU14`, `CU15`, `CU16`, `CU17`, `CU18`, `CU19`, `CU20`, `CU21`, `CU22` |
-| **En Progreso (Backend 100%)** | **1 CU** | `CU23` (Demanda Predictiva por Talla - Backend listo, falta Frontend) |
-| **Programados (Presentación 3)** | **2 CUs** | `CU24`, `CU25` |
+| **En Progreso (Backend 100%)** | **2 CUs** | `CU23` (Demanda Predictiva por Talla - Backend listo), `CU24` (Segmentación K-Means RFM+D - Backend listo) |
+| **Programados (Presentación 3)** | **1 CU** | `CU25` |
 
 ---
 
