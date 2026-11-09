@@ -231,7 +231,7 @@ export class AdminMlSegmentationPageComponent implements OnInit {
 
     this.segmentationApi.getStatus().subscribe({
       next: (res) => {
-        if (res.success && res.data) {
+        if (res.data) {
           this.statusData.set(res.data);
           if (res.data.has_trained_model) {
             this.loadScatterAndCustomers();
@@ -256,7 +256,7 @@ export class AdminMlSegmentationPageComponent implements OnInit {
   protected loadScatterAndCustomers(): void {
     this.segmentationApi.getScatterPoints(250).subscribe({
       next: (res) => {
-        if (res.success && res.data?.points) {
+        if (res.data?.points) {
           this.rawPoints.set(res.data.points);
         }
         this.loadCustomersPage(1);
@@ -273,7 +273,7 @@ export class AdminMlSegmentationPageComponent implements OnInit {
     this.segmentationApi.getCustomers(clusterId, page, this.pageSize).subscribe({
       next: (res) => {
         this.isLoading.set(false);
-        if (res.success && res.data) {
+        if (res.data) {
           this.customersList.set(res.data.customers);
           this.totalCustomers.set(res.data.total);
         }
@@ -300,7 +300,7 @@ export class AdminMlSegmentationPageComponent implements OnInit {
       .subscribe({
         next: (res) => {
           this.isTraining.set(false);
-          if (res.success && res.data) {
+          if (res.data) {
             this.trainResponse.set(res.data);
             this.successMessage.set(
               `Segmentación K-Means ejecutada con éxito. ${res.data.total_customers_analyzed} clientes agrupados en ${res.data.k_clusters} perfiles conductuales.`,
