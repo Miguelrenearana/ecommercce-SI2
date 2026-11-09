@@ -418,14 +418,37 @@ tests/test_cu24_customer_segmentation.py::test_cu24_get_segmented_customers_dril
 
 ---
 
+### CU25: Visualizar Dashboard Ejecutivo con KPIs y Métricas ML
+
+| ID | Objetivo / Escenario | Precondiciones | Datos de Entrada (Input) | Pasos de Ejecución | Resultado Esperado | Resultado Obtenido | Estado |
+| :---: | :--- | :--- | :--- | :--- | :--- | :--- | :---: |
+| **CP-CU25-01** | **Consulta de Dashboard Ejecutivo con agregación y cuotas SaaS (Happy Path)** | Tenant con suscripción activa (`elegance`), rol Administrador o Superadmin autenticado. | Petición `GET /api/dashboard?period=day` con token JWT. | 1. Usuario solicita métricas directivas.<br>2. Servicio computa ventas, inventario, reservas, tendencias y cuotas del plan SaaS.<br>3. Estructura respuesta unificada. | Código `HTTP 200 OK`. Retorna bloques completos `summary`, `offline_sync`, `policy_revenue`, `ml_kpis`, `plan_quotas`, `sales_series` y `branch_kpis`. | Agregación ejecutiva completa entregada con validación de límites de sucursales. | **APROBADO** |
+| **CP-CU25-02** | **Conciliación de métricas offline y políticas de cambio/devolución** | Ventas offline registradas, lotes sincronizados, devoluciones con retención 20-50% y cambios con cobro $\Delta > 0$. | Petición `GET /api/dashboard?period=day`. | 1. Agrega ventas offline (`is_offline=true`).<br>2. Agrega `sync_operations` por estado.<br>3. Agrega retenciones de `garment_returns` y diferencias abonadas de `garment_exchanges`. | Código `HTTP 200 OK`. `offline_sync` contiene tasa de sincronización y volumen; `policy_revenue` concilia retenciones acumuladas y diferencias cobradas. | Métricas operativas de offline y políticas financieras calculadas con precisión. | **APROBADO** |
+| **CP-CU25-03** | **Integración de métricas analíticas de Machine Learning (CU23 y CU24)** | Tenant con Plan Profesional/Empresarial (`has_ai_access: True`), modelos de predicción de demanda y segmentación RFM persistidos. | Petición `GET /api/dashboard`. | 1. Servicio extrae total de unidades proyectadas para el mes (`demand_forecasts`).<br>2. Agrupa distribución de clientes por clúster (`customer_segments`).<br>3. Mapea metadatos del modelo supervisado y no supervisado. | Código `HTTP 200 OK`. Retorna `has_ml_access: True`, unidades proyectadas, array con recuento porcentual de perfiles RFM y alertas de rotura preventiva. | Bloque de Inteligencia Analítica ML consolidado en el panel ejecutivo. | **APROBADO** |
+| **CP-CU25-04** | **Manejo seguro ante Plan Básico sin acceso a ML (degradación grácil)** | Tenant en Plan Básico (`has_ai_access: False`, límite de 2 sucursales). | Petición `GET /api/dashboard` con credenciales de tenant básico. | 1. Servicio detecta suscripción sin acceso a IA/ML.<br>2. Omite consultas a tablas de modelos predictivos.<br>3. Devuelve respuesta 200 con `has_ml_access: False`. | Código `HTTP 200 OK` (sin crash 500 ni 403). `has_ml_access: False`, métricas financieras estándar operativas y cuota `max_branches: 2`. | Degradación grácil impecable; el dashboard funciona sin bloquear al suscriptor básico. | **APROBADO** |
+| **CP-CU25-05** | **Aislamiento multitenant estricto en la agregación de métricas** | Dos empresas distintas con datos independientes en base de datos (`elegance` y `boutique-basica-cu25`). | Peticiones simultáneas `GET /api/dashboard` con tokens de cada tenant. | 1. Ejecuta queries con filtro obligatorio `tenant_id`.<br>2. Compara los conjuntos de identificadores de sucursal y ventas devueltos. | Código `HTTP 200 OK` en ambas. La intersección de IDs de sucursales o ventas entre ambos tenants es conjunto vacío (`len(interseccion) == 0`). | Aislamiento estricto confirmado: cero fuga de datos entre empresas suscriptoras. | **APROBADO** |
+
+**Evidencia de Ejecución Pytest (`backend/tests/test_cu25_executive_dashboard.py`):**
+```text
+tests/test_cu25_executive_dashboard.py::test_cu25_executive_dashboard_happy_path PASSED [ 20%]
+tests/test_cu25_executive_dashboard.py::test_cu25_offline_sync_and_policies_kpis PASSED [ 40%]
+tests/test_cu25_executive_dashboard.py::test_cu25_ml_kpis_integration PASSED [ 60%]
+tests/test_cu25_executive_dashboard.py::test_cu25_basic_plan_graceful_ml_handling PASSED [ 80%]
+tests/test_cu25_executive_dashboard.py::test_cu25_multitenant_strict_isolation PASSED [100%]
+
+======================= 5 passed, 8 warnings in 46.85s ========================
+```
+
+---
+
 ## 4. 📊 Resumen Estadístico Consolidado de Cobertura
 
 ```
 ========================================================================================
 RESUMEN EJECUTIVO DE PRUEBAS DE CAJA NEGRA — SISTEMAS 2 (1RA, 2DA Y 3RA PRESENTACIÓN)
 ========================================================================================
-Total Casos de Prueba Formalizados:    108
-Casos de Prueba Aprobados (PASSED):    108 (100%)
+Total Casos de Prueba Formalizados:    113
+Casos de Prueba Aprobados (PASSED):    113 (100%)
 Casos de Prueba Fallidos (FAILED):       0 (0%)
 Casos de Prueba Bloqueados:              0 (0%)
 ----------------------------------------------------------------------------------------
@@ -457,6 +480,7 @@ Distribución por Caso de Uso:
   - CU22 (Generar Dataset Sintético de Ventas y ML):    5 Casos de Prueba  [100% OK]
   - CU23 (Predecir Demanda de Ropa por Talla - RF):     5 Casos de Prueba  [100% OK]
   - CU24 (Segmentar Clientes con K-Means RFM+D):        5 Casos de Prueba  [100% OK]
+  - CU25 (Visualizar Dashboard Ejecutivo y KPIs ML):    5 Casos de Prueba  [100% OK]
 ----------------------------------------------------------------------------------------
 Aislamiento Multitenant:                               Verificado al 100% (HTTP 404/403)
 Políticas de Negocio Inviolables (P1, P2, P3, P4, P5): Cumplimiento Estricto Verificado
@@ -464,9 +488,11 @@ Inteligencia Artificial Generativa (Gemini 2.5 Flash): Verificado con RAG y Fall
 Generación Estocástica de Datos y ML Pipeline (NumPy): Verificado al 100% (Estacionalidad/Gauss)
 Machine Learning Supervisado (RandomForestRegressor):  Verificado al 100% (R2 >= 0.80, MAE/RMSE)
 Machine Learning No Supervisado (K-Means Clustering):  Verificado al 100% (Silhouette, Inercia, RFM+D)
+Dashboard Ejecutivo Unificado (KPIs, Cuotas, Offline): Verificado al 100% (Degradación Grácil 200 OK)
 Exportación Multi-Formato (ReportLab + OpenPyXL):       Verificado al 100% (PDF/XLSX/CSV)
 Geolocalización Móvil (OpenStreetMap + OSRM/ORS):      Verificado al 100% (Vehicular y Peatonal)
 ========================================================================================
+```
 ```
 ```
 
