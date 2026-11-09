@@ -1,10 +1,26 @@
 # HANDOFF LATEST — FASHIONSTORE SAAS MULTITENANT
 
-## Estado de Relevo Operativo al 08/11/2026 (Cierre Backend CU24: Segmentación de Clientes con K-Means - ML No Supervisado)
+## Estado de Relevo Operativo al 08/11/2026 (Cierre Backend CU25: Visualizar Dashboard Ejecutivo con KPIs y Métricas ML)
 
 ---
 
 ### 1. Avances Consolidados en esta Sesión
+
+-3. **Implementación de Backend de CU25 (Visualizar Dashboard Ejecutivo con KPIs y Métricas ML):**
+   - **Backend (p6_inteligencia_analitica):**
+     - Schemas Pydantic v2 [dashboard_schema.py](file:///c:/Users/PERSONAL/ecommerce-SI2/backend/app/packages/p6_inteligencia_analitica/schemas/dashboard_schema.py): OfflineSyncKpi, PolicyRevenueKpi, RfmSegmentPoint, MachineLearningKpi, PlanQuotaKpi integrados en DashboardResponse.
+     - Servicio [dashboard_service.py](file:///c:/Users/PERSONAL/ecommerce-SI2/backend/app/packages/p6_inteligencia_analitica/services/dashboard_service.py):
+       - Conciliación de ventas offline y estado de operaciones en lote (sync_operations), calculando tasa porcentual de éxito de sincronización.
+       - Balance contable de políticas de negocio inviolables: suma de retenciones del 20-50% en devoluciones (garment_returns) y diferencias cobradas $\Delta > 0$ en cambios (garment_exchanges).
+       - Consolidación analítica de Machine Learning: suma de unidades de demanda proyectadas para el mes (CU23) y desglose porcentual de clústeres RFM de clientes (CU24).
+       - Monitoreo de cuotas comerciales del plan SaaS: sucursales activas versus max_branches y acceso a IA.
+       - Degradación grácil ante inquilinos con Plan Básico: respuesta exitosa HTTP 200 OK con has_ml_access: False sin colapsos por falta de permisos.
+       - Aislamiento multitenant estricto en todas las agregaciones SQL.
+     - Rutas REST en [dashboard_routes.py](file:///c:/Users/PERSONAL/ecommerce-SI2/backend/app/packages/p6_inteligencia_analitica/routes/dashboard_routes.py): soporte para RolEnum.administrador y RolEnum.superadmin.
+     - Suite automatizada [ackend/tests/test_cu25_executive_dashboard.py](file:///c:/Users/PERSONAL/ecommerce-SI2/backend/tests/test_cu25_executive_dashboard.py) con **5/5 pruebas PASSED (100%)**.
+   - **Aseguramiento de Calidad:**
+     - 5 casos de prueba formalizados en [docs/informes/PRUEBAS_CAJA_NEGRA.md](file:///c:/Users/PERSONAL/ecommerce-SI2/docs/informes/PRUEBAS_CAJA_NEGRA.md) (CP-CU25-01 a CP-CU25-05).
+     - Total acumulado del proyecto: **113/113 casos de prueba PASSED (100%)**.
 
 -2. **Implementación de Backend de CU24 (Segmentar Clientes con K-Means - ML No Supervisado):**
    - **Backend (`p6_inteligencia_analitica`):**
